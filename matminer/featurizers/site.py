@@ -1,9 +1,9 @@
 from __future__ import division
 
 import copy
-from functools import lru_cache
 
 from matminer.featurizers.utils.grdf import Gaussian, Histogram
+from matminer.featurizers.utils.harmonics import get_wigner_coeffs
 from matminer.utils.caching import get_nearest_neighbors
 from matminer.utils.data import MagpieData
 
@@ -26,16 +26,12 @@ index and the structure. For example:
 """
 
 import os
-import warnings
 import ruamel.yaml as yaml
 import itertools
 import numpy as np
-import scipy.integrate as integrate
 
 from matminer.featurizers.base import BaseFeaturizer
-from math import pi
 from scipy.special import sph_harm
-from sympy.physics.wigner import wigner_3j
 from pymatgen import Structure
 from pymatgen.core.periodic_table import Element
 from pymatgen.analysis.local_env import LocalStructOrderParams, \
@@ -1952,35 +1948,3 @@ class SiteElementalProperty(BaseFeaturizer):
             return output
         else:
             raise ValueError('Unrecognized preset: {}'.format(preset))
-
-
-@lru_cache(maxsize=32)
-def get_wigner_coeffs(l):
-    """Get the list of non-zero Wigner 3j triplets
-
-    Args:
-        l (int): Desired l
-    Returns:
-        List of tuples that contain:
-            - ((int)) m coordinates of the triplet
-            - (float) Wigner coefficient
-    """
-
-    return [((m1, m2, m3), float(wigner_3j(l, l, l, m1, m2, m3)))
-            for m1, m2, m3 in _iterate_wigner_3j(l)]
-
-
-def _iterate_wigner_3j(l):
-    """Iterator over all non-zero Wigner 3j triplets
-
-    Args:
-        l (int) - Desired l
-    Generates:
-        pairs of acceptable l's
-    """
-
-    for m1 in range(-l, l+1):
-        for m2 in range(-l, l+1):
-            m3 = -1 * (m1 + m2)
-            if -l <= m3 <= 1:
-                yield m1, m2, m3
