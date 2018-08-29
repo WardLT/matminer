@@ -255,12 +255,14 @@ class BaseFeaturizer(BaseEstimator, TransformerMixin):
 
     def featurize_many(self, entries, ignore_errors=False, return_errors=False,
                        pbar=True):
-        """
-        Featurize a list of entries.
+        """Featurize a list of entries.
+
         If `featurize` takes multiple inputs, supply inputs as a list of tuples.
 
+        Featurize_many supports entries as a list, tuple, numpy array, Pandas Series, or Pandas DataFrame.
+
         Args:
-            entries (list): A list of entries to be featurized.
+            entries (list-like object): A list of entries to be featurized.
             ignore_errors (bool): Returns NaN for entries where exceptions are
                 thrown if True. If False, exceptions are thrown as normal.
             return_errors (bool): If True, returns the feature list as
@@ -278,7 +280,7 @@ class BaseFeaturizer(BaseEstimator, TransformerMixin):
                              " return_errors.")
 
         # Check inputs
-        if not hasattr(entries, '__getitem__'):
+        if not isinstance(entries, (tuple, list, np.ndarray, pd.Series, pd.DataFrame)):
             raise Exception("'entries' must be a list-like object")
 
         # Special case: Empty list
@@ -286,7 +288,9 @@ class BaseFeaturizer(BaseEstimator, TransformerMixin):
             return []
 
         # If the featurize function only has a single arg, zip the inputs
-        if not isinstance(entries[0], (tuple, list, np.ndarray)):
+        if isinstance(entries, pd.DataFrame):
+            entries = entries.values
+        elif isinstance(entries, pd.Series) or not isinstance(entries[0], (tuple, list, np.ndarray)):
             entries = zip(entries)
 
         # Add a progress bar
@@ -421,7 +425,8 @@ class MultipleFeaturizer(BaseFeaturizer):
         self.featurizers = featurizers
 
     def featurize(self, *x):
-        return np.hstack(np.squeeze(f.featurize(*x)) for f in self.featurizers)
+        return np.hstack(np.squeeze([np.array(f.featurize(*x), dtype=object)
+                                     for f in self.featurizers]))
 
     def feature_labels(self):
         return sum([f.feature_labels() for f in self.featurizers], [])
@@ -432,9 +437,9 @@ class MultipleFeaturizer(BaseFeaturizer):
         return self
 
     def featurize_wrapper(self, x, return_errors=False, ignore_errors=False):
-        return np.hstack(np.squeeze(f.featurize_wrapper(x, return_errors=return_errors,
-                                                        ignore_errors=ignore_errors))
-                         for f in self.featurizers)
+        return np.hstack([np.squeeze(np.array(f.featurize_wrapper(x, return_errors=return_errors,
+                                             ignore_errors=ignore_errors), dtype=object))
+                    for f in self.featurizers])
 
     def _generate_column_labels(self, multiindex, return_errors):
         return np.hstack([f._generate_column_labels(multiindex, return_errors)
