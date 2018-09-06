@@ -35,7 +35,7 @@ def _iterate_wigner_3j(l):
     for m1 in range(-l, l+1):
         for m2 in range(-l, l+1):
             m3 = -1 * (m1 + m2)
-            if -l <= m3 <= 1:
+            if -l <= m3 <= l:
                 yield m1, m2, m3
 
 
